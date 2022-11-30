@@ -1,0 +1,122 @@
+// Please name a label like so "TLabc" TL is mandatory, abc part you can change
+// using that this script figures out if there are more than one Trigger Labels
+
+function doGet(e) {
+  // var response = Gmail.Users.Labels.list('me');
+  // var label = GmailApp.getUserLabelByName("CustomLabel");
+  // var label = GmailApp.getUserLabelByName("abcLabel");
+  //  var response =  label.getThreads();
+  var now = new Date();
+  // Logger.log(response)
+
+  // add your own trigger label and response body like following, 
+  var cases = [
+    {
+      "label": "TLabc",
+      "body": `Hello this is a sample \n reply text for  \n mails containing abc <a href="http://google.com">This is a link</a>`,
+      "htmlBody": `Hello this is a sample \n reply text but inside htmlBody for  \n mails containing abc <a href="http://google.com">This is a link</a>`
+    },
+    {
+      "label": "TLefg",
+      "body": "this mail has efg and this is the reply",
+      "htmlBody": ""
+    },
+  ]
+
+  for (c of cases) {
+    const label = GmailApp.getUserLabelByName(c.label);
+    // Logger.log("current label ="+c.label)
+    const response = label.getThreads();
+    // Logger.log( )
+    for (var thread of response) {
+
+      if (thread.hasStarredMessages()) {
+        //check if no other trigger label is present
+        var allLabels = thread.getLabels();
+        var counter = 0; // to count how many labels have GS infront of them 
+        Logger.log("current msg=" + thread.getMessages()[0].getPlainBody())
+        for (testLabel of allLabels) {
+          const labelname = testLabel.getName();
+          if (labelname.slice(0, 2) == "TL") counter++; // to check if there is more than one Trigger Label
+
+        }
+
+
+
+        var messages = thread.getMessages();
+        if (messages.length == 1 && counter == 1) {
+          for (message of messages) {
+            if (message.isStarred()) {
+              message.createDraftReply({
+                htmlBody: c.htmlBody,
+              });
+              Logger.log("Draft done for=" + message.getPlainBody())
+              message.unstar();
+              thread.removeLabel(GmailApp.getUserLabelByName(c.label)) //removes the label so that once done drafting,so it doesnt load during next loop 
+
+            }
+            // Logger.log(message.getPlainBody())
+          }
+
+        }
+
+      }
+
+    }
+  }
+
+
+
+
+}
+
+const exemptionList = ["services@paypal.com"]
+
+function myFunction() {
+
+  AccountTemplate = `Environmental1= < p > We are a group of Accountants</p >
+    <p></p>
+    <p>You can read more about us = <a href=" https://google.com">here</a>
+    </p>`
+
+  var cases = [
+    {
+      "keyword": "Account",
+      "template": `Environmental1= < p > We are a group of Accountants</p >
+                    <p></p>
+                    <p>You can read more about us = <a href=" https://google.com">here</a>
+                    </p>`
+    },
+    {
+      "keyword":"abc",
+      "template":`<a href="https://google.com">This is a link and also a reply to abc</a>`
+    },
+    {
+      "keyword":"efg",
+      "template":`<a href="https://google.com">EFG is the keyword for this reply</a>`
+    },
+  ]
+
+  // searchEmails("Account", AccountTemplate)
+  for ( var i = 0 ; i< cases.length ; i++)
+  {
+    searchEmails( cases[i].keyword, cases[i].template)
+  }
+
+}
+
+function searchEmails(keyword, template) {
+  const threads = GmailApp.search(`newer_than:1h label:inbox ${keyword}`);
+
+  for (const thread of threads) {
+    const sender = thread.getMessages()[0].getFrom()
+    isExempted = exemptionList.some(item => sender.includes(item))
+    console.log(sender, isExempted)
+    if (thread.getMessageCount() === 1 && !(isExempted)) {
+      // thread.createDraftReply("", { htmlBody: template }).send()
+      thread.createDraftReply("", { htmlBody: template })
+      // GmailApp.moveThreadToArchive(thread)
+    }
+  }
+
+}
